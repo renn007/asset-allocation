@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>资产配置方案库</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #F0F2F5;
+      --surface: #FFFFFF;
+      --nav: #0F172A;
+      --accent: #3B82F6;
+      --text: #1E293B;
+      --text-sub: #64748B;
+      --border: #E2E8F0;
+      --low: #10B981;
+      --mid: #F59E0B;
+      --high: #EF4444;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
+    }
+
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, "PingFang SC", sans-serif; min-height: 100vh; }
+
+    /* ── NAV ── */
+    nav {
+      background: var(--nav);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-logo { color: #fff; font-size: 16px; font-weight: 700; letter-spacing: -.3px; white-space: nowrap; }
+    .nav-logo span { color: var(--accent); }
+    .search-wrap { flex: 1; max-width: 360px; position: relative; }
+    .search-wrap input {
+      width: 100%;
+      padding: 7px 12px 7px 36px;
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+    }
+    .search-wrap input::placeholder { color: rgba(255,255,255,.4); }
+    .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,.5); font-size: 14px; }
+    .compare-badge {
+      margin-left: auto;
+      background: var(--accent);
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      border: none;
+    }
+    .compare-badge.visible { display: flex; }
+
+    /* ── FILTERS ── */
+    .filters {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .filter-group { display: flex; align-items: center; gap: 8px; }
+    .filter-label { font-size: 12px; color: var(--text-sub); font-weight: 500; white-space: nowrap; }
+    .pill {
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-sub);
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .pill.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+    .pill:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+
+    /* ── GRID ── */
+    .grid-header {
+      padding: 20px 24px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .count-label { font-size: 14px; color: var(--text-sub); }
+    .sort-select {
+      padding: 5px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      outline: none;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      padding: 0 24px 40px;
+    }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all .2s;
+      position: relative;
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,.12); }
+    .card.selected { border-color: var(--accent); }
+
+    .card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 4px; }
+    .card-name { font-size: 16px; font-weight: 700; line-height: 1.3; }
+    .risk-badge {
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-left: 8px;
+      margin-top: 2px;
+    }
+    .risk-low { background: #D1FAE5; color: #065F46; }
+    .risk-mid { background: #FEF3C7; color: #92400E; }
+    .risk-high { background: #FEE2E2; color: #991B1B; }
+
+    .card-creator { font-size: 12px; color: var(--text-sub); margin-bottom: 16px; }
+
+    .chart-wrap { width: 110px; height: 110px; margin: 0 auto 16px; }
+
+    .card-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; text-align: center; margin-bottom: 16px; }
+    .metric { background: var(--bg); border-radius: 8px; padding: 8px 4px; }
+    .metric-val { font-size: 15px; font-weight: 700; }
+    .metric-val.pos { color: var(--low); }
+    .metric-val.neg { color: var(--high); }
+    .metric-val.neu { color: var(--accent); }
+    .metric-lbl { font-size: 10px; color: var(--text-sub); margin-top: 2px; }
+
+    .card-footer { display: flex; gap: 8px; }
+    .btn {
+      flex: 1;
+      padding: 7px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #2563EB; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-sub); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-outline.selected-btn { border-color: var(--accent); color: var(--accent); background: #EFF6FF; }
+
+    .select-dot {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px;
+      color: #fff;
+      transition: all .15s;
+    }
+    .card.selected .select-dot { background: var(--accent); border-color: var(--accent); }
+
+    /* ── MODAL ── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.5);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .overlay.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 820px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.3);
+    }
+    .modal-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 24px 24px 0;
+    }
+    .modal-title { font-size: 22px; font-weight: 800; }
+    .modal-sub { font-size: 13px; color: var(--text-sub); margin-top: 4px; }
+    .modal-close {
+      background: var(--bg);
+      border: none;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      color: var(--text-sub);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .modal-close:hover { background: var(--border); }
+    .modal-body { padding: 20px 24px 24px; }
+
+    .modal-top { display: grid; grid-template-columns: 200px 1fr; gap: 24px; margin-bottom: 24px; }
+    @media (max-width: 600px) { .modal-top { grid-template-columns: 1fr; } }
+    .modal-chart-wrap { width: 180px; height: 180px; margin: 0 auto; }
+
+    .alloc-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .alloc-table th { color: var(--text-sub); font-weight: 500; font-size: 12px; padding: 0 0 8px; text-align: left; }
+    .alloc-table td { padding: 8px 0; border-top: 1px solid var(--border); }
+    .alloc-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+    .alloc-bar-wrap { background: var(--bg); border-radius: 4px; height: 6px; overflow: hidden; }
+    .alloc-bar { height: 100%; border-radius: 4px; }
+
+    .section-title { font-size: 13px; font-weight: 600; color: var(--text-sub); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; }
+
+    .modal-section { margin-bottom: 20px; }
+    .desc-text { font-size: 14px; color: var(--text-sub); line-height: 1.7; }
+
+    .metrics-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
+    @media (max-width: 500px) { .metrics-row { grid-template-columns: repeat(2, 1fr); } }
+    .metric-card { background: var(--bg); border-radius: 10px; padding: 12px; text-align: center; }
+    .metric-card .val { font-size: 20px; font-weight: 800; }
+    .metric-card .lbl { font-size: 11px; color: var(--text-sub); margin-top: 4px; }
+
+    .tags-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag { background: #EFF6FF; color: #3B82F6; padding: 4px 10px; border-radius: 6px; font-size: 12px; }
+    .tag.env { background: #F0FDF4; color: #15803D; }
+
+    .etf-section { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 500px) { .etf-section { grid-template-columns: 1fr; } }
+    .etf-group h4 { font-size: 12px; font-weight: 600; color: var(--text-sub); margin-bottom: 8px; }
+    .etf-list { display: flex; flex-direction: column; gap: 4px; }
+    .etf-item { background: var(--bg); border-radius: 6px; padding: 6px 10px; font-size: 13px; font-family: monospace; }
+
+    /* ── COMPARE PANEL ── */
+    .compare-panel {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      box-shadow: 0 -4px 20px rgba(0,0,0,.1);
+      padding: 16px 24px;
+      z-index: 150;
+      display: none;
+    }
+    .compare-panel.open { display: block; }
+    .compare-panel-inner { max-width: 1200px; margin: 0 auto; }
+    .compare-panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .compare-panel-title { font-size: 14px; font-weight: 600; }
+    .compare-close { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--text-sub); }
+    .compare-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .compare-table th { background: var(--bg); padding: 8px 12px; text-align: left; font-weight: 500; color: var(--text-sub); }
+    .compare-table td { padding: 8px 12px; border-top: 1px solid var(--border); }
+    .best { color: var(--low); font-weight: 700; }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-sub); grid-column: 1/-1; }
+    .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+
+    /* ── GURU BADGE ── */
+    .guru-badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; vertical-align: middle; margin-left: 4px; }
+    .guru-intl { background: #EEF2FF; color: #4338CA; }
+    .guru-cn   { background: #FFF1F2; color: #BE123C; }
+
+    /* ── DISCLAIMER ── */
+    .disclaimer {
+      text-align: center;
+      padding: 16px 24px 32px;
+      font-size: 12px;
+      color: var(--text-sub);
+      border-top: 1px solid var(--border);
+      margin-top: 8px;
+      line-height: 1.8;
+    }
+
+    /* ── GROWTH CHART ── */
+    .growth-wrap { width: 100%; height: 180px; margin: 0 0 4px; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">资产<span>配置</span>方案库</div>
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="搜索方案名称或创始人..." />
+  </div>
+  <button class="compare-badge" id="compareBtn" onclick="openCompare()">
+    <span>📊</span>
+    <span id="compareCount">对比 0 个方案</span>
+  </button>
+</nav>
+
+<!-- FILTERS -->
+<div class="filters">
+  <div class="filter-group">
+    <span class="filter-label">风险等级</span>
+    <button class="pill active" data-filter="risk" data-val="all">全部</button>
+    <button class="pill" data-filter="risk" data-val="low">🟢 低风险</button>
+    <button class="pill" data-filter="risk" data-val="mid">🟡 中风险</button>
+    <button class="pill" data-filter="risk" data-val="high">🔴 高风险</button>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">资产特色</span>
+    <button class="pill active" data-filter="type" data-val="all">全部</button>
+    <button class="pill" data-filter="type" data-val="gold">含黄金</button>
+    <button class="pill" data-filter="type" data-val="intl">含境外</button>
+    <button class="pill" data-filter="type" data-val="reit">含REITs</button>
+    <button class="pill" data-filter="type" data-val="pure">纯股债</button>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">来源分类</span>
+    <button class="pill active" data-filter="cat" data-val="all">全部</button>
+    <button class="pill" data-filter="cat" data-val="classic">📐 经典策略</button>
+    <button class="pill" data-filter="cat" data-val="intl">🌍 国际大佬</button>
+    <button class="pill" data-filter="cat" data-val="cn">🇨🇳 国内大佬</button>
+  </div>
+</div>
+
+<!-- GRID -->
+<div class="grid-header">
+  <div class="count-label" id="countLabel">共 24 个方案</div>
+  <select class="sort-select" id="sortSelect">
+    <option value="default">默认排序</option>
+    <option value="return">年化收益 ↓</option>
+    <option value="drawdown">最大回撤 ↑</option>
+    <option value="sharpe">夏普比率 ↓</option>
+  </select>
+</div>
+<div class="grid" id="grid"></div>
+
+<div class="disclaimer">
+  ⚠️ 本站所有收益率、最大回撤、夏普比率等数据均为历史估算或模拟值，不代表未来表现。<br>
+  大佬持仓组合基于公开披露信息整理，仅供学习参考，不构成任何投资建议。投资有风险，入市需谨慎。
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="overlay" id="overlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="modalTitle"></div>
+        <div class="modal-sub" id="modalSub"></div>
+      </div>
+      <button class="modal-close" onclick="closeModalDirect()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- COMPARE PANEL -->
+<div class="compare-panel" id="comparePanel">
+  <div class="compare-panel-inner">
+    <div class="compare-panel-header">
+      <span class="compare-panel-title">方案对比</span>
+      <button class="compare-close" onclick="closeComparePanel()">✕</button>
+    </div>
+    <div id="compareTableWrap"></div>
+  </div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────
+// DATA
+// ──────────────────────────────────────────────
+const CAT_COLORS = {
+  equity:      '#3B82F6',
+  equity_intl: '#60A5FA',
+  equity_em:   '#93C5FD',
+  bond_long:   '#10B981',
+  bond_mid:    '#34D399',
+  bond_tips:   '#059669',
+  bond:        '#6EE7B7',
+  gold:        '#F59E0B',
+  commodity:   '#F97316',
+  reit:        '#8B5CF6',
+  cash:        '#9CA3AF',
+  alternative: '#14B8A6',
+};
+
+const CAT_NAMES = {
+  equity: '股票', equity_intl: '境外股票', equity_em: '新兴市场',
+  bond_long: '长期债券', bond_mid: '中期债券', bond_tips: '通胀债券', bond: '债券',
+  gold: '黄金', commodity: '大宗商品', reit: 'REITs',
+  cash: '现金', alternative: '另类资产',
+};
+
+const SCHEMES = [
+  {
+    id: 'all-weather',
+    name: '全天候组合',
+    nameEn: 'All Weather Portfolio',
+    creator: 'Ray Dalio · 桥水基金',
+    year: 1996,
+    risk: 'low',
+    tags: ['gold'],
+    description: '基于"风险平价"理念，将经济划分为四个象限（增长/衰退 × 通胀/通缩），使每类资产在对应环境中恰好发挥作用，从而实现"全天候"稳健。',
+    philosophy: '传统60/40组合中股票贡献了约95%的风险，债券权重虽大但风险权重极小。全天候通过将债券杠杆化来实现真正的风险平价。',
+    allocations: [
+      { asset: '美国股票',    cat: 'equity',    weight: 30 },
+      { asset: '长期国债(20Y+)', cat: 'bond_long', weight: 40 },
+      { asset: '中期国债(7Y)', cat: 'bond_mid',  weight: 15 },
+      { asset: '黄金',        cat: 'gold',      weight: 7.5 },
+      { asset: '大宗商品',    cat: 'commodity', weight: 7.5 },
+    ],
+    perf: { ret: 7.5, dd: -12.7, sharpe: 0.80, vol: 7.5 },
+    rebalance: '每年一次',
+    suitable: ['保守型投资者', '退休准备', '长期持有'],
+    envs: ['通胀上升', '通缩环境', '经济增长', '经济衰退'],
+    etf_cn: ['510300 沪深300ETF', '511020 7-10年国开债', '518880 黄金ETF', '159980 有色金属ETF'],
+    etf_us: ['VTI', 'TLT', 'IEF', 'GLD', 'DJP'],
+  },
+  {
+    id: 'permanent',
+    name: '永久组合',
+    nameEn: 'Permanent Portfolio',
+    creator: 'Harry Browne',
+    year: 1982,
+    risk: 'low',
+    tags: ['gold'],
+    description: '将投资组合均等分配给四类资产，每类资产在某一特定经济环境下表现最佳，形成相互对冲的防御体系。',
+    philosophy: '没有人能预测经济走势，因此最明智的做法是对每种可能的经济状态都给予同等重视，任何情况下都不会全输。',
+    allocations: [
+      { asset: '股票',  cat: 'equity',    weight: 25 },
+      { asset: '长期债券', cat: 'bond_long', weight: 25 },
+      { asset: '黄金',  cat: 'gold',      weight: 25 },
+      { asset: '现金',  cat: 'cash',      weight: 25 },
+    ],
+    perf: { ret: 6.5, dd: -11.0, sharpe: 0.75, vol: 6.8 },
+    rebalance: '每年一次（偏离5%时触发）',
+    suitable: ['极度保守型', '避险需求', '财富保值'],
+    envs: ['通胀', '通缩', '经济繁荣', '经济萧条'],
+    etf_cn: ['510300 沪深300ETF', '511010 国债ETF', '518880 黄金ETF', '货币基金'],
+    etf_us: ['VTI', 'TLT', 'GLD', 'SHY'],
+  },
+  {
+    id: '60-40',
+    name: '股债60/40',
+    nameEn: '60/40 Portfolio',
+    creator: '传统机构配置',
+    year: 1952,
+    risk: 'mid',
+    tags: ['pure'],
+    description: '最经典的传统资产配置模型，60%配置股票获取长期增长，40%配置债券降低波动、提供保护。简单易行，历经数十年验证。',
+    philosophy: '股票和债券在多数市场环境下负相关，债券在股市下跌时起到缓冲作用。60/40的比例平衡了增长需求与风险控制。',
+    allocations: [
+      { asset: '股票', cat: 'equity', weight: 60 },
+      { asset: '债券', cat: 'bond',   weight: 40 },
+    ],
+    perf: { ret: 8.5, dd: -27.0, sharpe: 0.65, vol: 11.5 },
+    rebalance: '每年或偏离5%时',
+    suitable: ['稳健型投资者', '中长期配置', '退休账户'],
+    envs: ['经济增长', '低通胀环境'],
+    etf_cn: ['510300 沪深300ETF', '511010 国债ETF'],
+    etf_us: ['VTI / SPY', 'BND / AGG'],
+  },
+  {
+    id: 'yale',
+    name: '耶鲁捐赠基金',
+    nameEn: 'Yale Endowment Model',
+    creator: 'David Swensen · 耶鲁大学',
+    year: 1985,
+    risk: 'high',
+    tags: ['intl', 'reit'],
+    description: '斯文森创立的机构配置模式，大量引入另类资产（私募、房地产），通过流动性溢价获取超额收益，适合超长期配置。',
+    philosophy: '股权资产长期表现最优，应尽量持有股权类资产。非流动性带来溢价，普通投资者也可通过REITs近似实现。',
+    allocations: [
+      { asset: '美国股票',    cat: 'equity',      weight: 30 },
+      { asset: '境外发达股票', cat: 'equity_intl', weight: 15 },
+      { asset: '新兴市场',    cat: 'equity_em',   weight: 5  },
+      { asset: 'REITs',      cat: 'reit',         weight: 20 },
+      { asset: '债券',        cat: 'bond',         weight: 15 },
+      { asset: '通胀保护债',  cat: 'bond_tips',    weight: 15 },
+    ],
+    perf: { ret: 10.0, dd: -28.0, sharpe: 0.72, vol: 14.2 },
+    rebalance: '每年，严格执行',
+    suitable: ['超长期投资者', '机构投资者', '高风险承受力'],
+    envs: ['经济增长期', '通胀上升'],
+    etf_cn: ['510300 沪深300', '159920 恒生ETF', '180677 标普500', '180012 上证REITs'],
+    etf_us: ['VTI', 'VEA', 'VWO', 'VNQ', 'BND', 'SCHP'],
+  },
+  {
+    id: 'three-fund',
+    name: '三基金组合',
+    nameEn: 'Three-Fund Portfolio',
+    creator: 'John Bogle · 先锋基金',
+    year: 1990,
+    risk: 'mid',
+    tags: ['intl', 'pure'],
+    description: '极简主义的被动投资方案，仅用三只指数基金覆盖全球股票市场和债券市场，超低费率，长期有效。',
+    philosophy: '市场是难以战胜的，低费率的指数基金长期将跑赢绝大多数主动管理基金。越简单，越有效。',
+    allocations: [
+      { asset: '美国全市场股票', cat: 'equity',      weight: 48 },
+      { asset: '国际股票',      cat: 'equity_intl', weight: 16 },
+      { asset: '债券',          cat: 'bond',         weight: 36 },
+    ],
+    perf: { ret: 8.0, dd: -33.0, sharpe: 0.60, vol: 12.0 },
+    rebalance: '每年一次',
+    suitable: ['懒人投资者', '长期定投', '费率敏感者'],
+    envs: ['长期经济增长'],
+    etf_cn: ['510300 沪深300', '159920 恒生ETF', '511010 国债ETF'],
+    etf_us: ['VTI', 'VXUS', 'BND'],
+  },
+  {
+    id: 'graham',
+    name: '格雷厄姆防御型',
+    nameEn: 'Graham Defensive Portfolio',
+    creator: 'Benjamin Graham',
+    year: 1949,
+    risk: 'low',
+    tags: ['pure'],
+    description: '价值投资鼻祖格雷厄姆提出，在股票和债券之间保持动态平衡，市场高估时降低股票比例，市场低估时增加股票，永远不低于25%也不高于75%。',
+    philosophy: '防御型投资者无需择时，只需在股债之间维持纪律性平衡。市场情绪是你的仆人，而不是主人。',
+    allocations: [
+      { asset: '股票', cat: 'equity', weight: 50 },
+      { asset: '债券', cat: 'bond',   weight: 50 },
+    ],
+    perf: { ret: 7.0, dd: -19.0, sharpe: 0.68, vol: 9.5 },
+    rebalance: '每年或市场大幅波动时',
+    suitable: ['价值投资者', '保守稳健型', '长期持有'],
+    envs: ['各种市场环境均适用'],
+    etf_cn: ['510300 沪深300', '511010 国债ETF'],
+    etf_us: ['VTI', 'BND'],
+  },
+  {
+    id: 'aggressive',
+    name: '进取型80/20',
+    nameEn: 'Aggressive 80/20',
+    creator: '成长型配置',
+    year: 1990,
+    risk: 'high',
+    tags: ['pure'],
+    description: '以股票为主导的进取型配置，适合投资期限长、风险承受力强的年轻投资者。80%股票追求长期资本增值，20%债券提供少量缓冲。',
+    philosophy: '时间是最好的风险管理工具，年轻人应该承担更多风险来换取更高的长期回报，短期波动不值得担忧。',
+    allocations: [
+      { asset: '股票', cat: 'equity', weight: 80 },
+      { asset: '债券', cat: 'bond',   weight: 20 },
+    ],
+    perf: { ret: 9.8, dd: -40.0, sharpe: 0.58, vol: 16.0 },
+    rebalance: '每年一次',
+    suitable: ['年轻投资者(<35岁)', '风险承受力强', '10年以上期限'],
+    envs: ['长期牛市', '经济扩张期'],
+    etf_cn: ['510300 沪深300', '159920 恒生ETF', '511010 国债ETF'],
+    etf_us: ['VTI', 'VEA', 'BND'],
+  },
+  {
+    id: 'conservative',
+    name: '保守型20/80',
+    nameEn: 'Conservative 20/80',
+    creator: '退休保守配置',
+    year: 1990,
+    risk: 'low',
+    tags: ['pure'],
+    description: '以债券为主导的极度保守配置，以保本保值为首要目标，适合临近退休或对本金安全性要求极高的投资者。',
+    philosophy: '随着退休临近，降低波动比追求收益更重要。20%的股票提供抵御通胀的基本增长，80%债券保护本金安全。',
+    allocations: [
+      { asset: '股票', cat: 'equity', weight: 20 },
+      { asset: '债券', cat: 'bond',   weight: 80 },
+    ],
+    perf: { ret: 5.2, dd: -7.8, sharpe: 0.62, vol: 5.5 },
+    rebalance: '每年一次',
+    suitable: ['退休人士', '极度保守型', '短期资金'],
+    envs: ['降息周期', '经济衰退'],
+    etf_cn: ['510300 沪深300', '511010 国债ETF', '511020 国开债ETF'],
+    etf_us: ['VTI', 'BND', 'VCSH'],
+  },
+  {
+    id: 'golden-butterfly',
+    name: '黄金蝴蝶组合',
+    nameEn: 'Golden Butterfly Portfolio',
+    creator: 'Tyler / PortfolioCharts',
+    year: 2015,
+    risk: 'low',
+    tags: ['gold', 'pure'],
+    description: '在永久组合基础上优化，将现金替换为小盘价值股，同时增加股票比例。历史上在收益和低波动之间取得了极佳平衡。',
+    philosophy: '在永久组合的稳定性基础上，利用小盘价值股的长期溢价提升整体收益，同时保留黄金的避险功能。',
+    allocations: [
+      { asset: '美国全市场股票', cat: 'equity',    weight: 20 },
+      { asset: '小盘价值股',    cat: 'equity',    weight: 20 },
+      { asset: '长期债券',      cat: 'bond_long', weight: 20 },
+      { asset: '短期债券',      cat: 'bond_mid',  weight: 20 },
+      { asset: '黄金',          cat: 'gold',      weight: 20 },
+    ],
+    perf: { ret: 7.8, dd: -13.5, sharpe: 0.85, vol: 7.2 },
+    rebalance: '每年一次',
+    suitable: ['保守型', '追求低波动', '财富积累期'],
+    envs: ['各种经济环境'],
+    etf_cn: ['510300 沪深300', '510500 中证500ETF', '511010 国债ETF', '518880 黄金ETF'],
+    etf_us: ['VTI', 'VIOV', 'TLT', 'SHY', 'GLD'],
+  },
+  {
+    id: 'global-market',
+    name: '全球市场组合',
+    nameEn: 'Global Market Portfolio',
+    creator: '按市值加权理论',
+    year: 2000,
+    risk: 'high',
+    tags: ['intl'],
+    description: '按全球市值比例配置各地区资产，是最接近"市场组合"的理论实践。美股、欧股、新兴市场均按权重配置，分散单一市场风险。',
+    philosophy: '根据现代投资组合理论，全球市值加权组合是所有风险投资者的最优起点，任何对此的偏离都需要额外信息的支持。',
+    allocations: [
+      { asset: '美国股票',    cat: 'equity',      weight: 55 },
+      { asset: '欧日发达市场', cat: 'equity_intl', weight: 33 },
+      { asset: '新兴市场',    cat: 'equity_em',   weight: 12 },
+    ],
+    perf: { ret: 9.0, dd: -45.0, sharpe: 0.55, vol: 17.5 },
+    rebalance: '每年调整至市值权重',
+    suitable: ['长期成长型', '追求全球分散', '年轻投资者'],
+    envs: ['全球经济增长期'],
+    etf_cn: ['159920 恒生ETF', '513500 标普500ETF', '159941 纳斯达克ETF'],
+    etf_us: ['VT (一键全球)'],
+  },
+
+  // ── 大佬持仓系列 ──
+  {
+    id: 'buffett-will',
+    name: '巴菲特遗嘱组合',
+    nameEn: "Buffett's Will Portfolio",
+    creator: 'Warren Buffett · 伯克希尔哈撒韦',
+    year: 2013,
+    risk: 'high',
+    tags: ['pure'],
+    description: '巴菲特在2013年致股东信中披露的遗产管理方案：将90%资金投入低成本标普500指数基金，其余10%购买短期美国国债。以最简单的方式参与美国经济长期增长。',
+    philosophy: '"我相信这一组合的长期收益将优于大多数投资者——无论机构还是个人——委托高收费基金经理所取得的结果。"',
+    allocations: [
+      { asset: '标普500指数基金', cat: 'equity',   weight: 90 },
+      { asset: '短期美国国债',   cat: 'bond_mid', weight: 10 },
+    ],
+    perf: { ret: 10.2, dd: -44.0, sharpe: 0.62, vol: 16.8 },
+    rebalance: '每年一次',
+    suitable: ['长期投资者', '指数信仰者', '20年以上期限'],
+    envs: ['长期经济增长', '美股持续牛市'],
+    etf_cn: ['513500 标普500ETF', '511990 货币基金'],
+    etf_us: ['VOO', 'SHV'],
+  },
+  {
+    id: 'berkshire',
+    name: '伯克希尔持仓模型',
+    nameEn: 'Berkshire Hathaway Model',
+    creator: 'Warren Buffett · 伯克希尔哈撒韦',
+    year: 1965,
+    risk: 'high',
+    tags: ['pure'],
+    description: '模拟伯克希尔哈撒韦的公开持仓结构（13F报告）：重仓苹果等科技消费龙头、美国银行等金融股、可口可乐等消费品及能源，集中持有少数护城河极宽的公司，长期不动。',
+    philosophy: '"以合理的价格买入一家好公司，远胜于以便宜的价格买入一家平庸的公司。" 集中持仓，长期持有，让时间和复利做功。',
+    allocations: [
+      { asset: '科技消费龙头(苹果等)', cat: 'equity',      weight: 47 },
+      { asset: '金融股(美国银行等)',   cat: 'equity_intl', weight: 30 },
+      { asset: '消费品/能源(可口可乐等)', cat: 'commodity', weight: 13 },
+      { asset: '现金及等价物',         cat: 'cash',        weight: 10 },
+    ],
+    perf: { ret: 19.8, dd: -50.7, sharpe: 0.78, vol: 22.5 },
+    rebalance: '机会性调整，不固定周期',
+    suitable: ['价值投资者', '长期持有者', '能承受大幅波动'],
+    envs: ['经济稳定增长', '企业盈利扩张期'],
+    etf_cn: ['159941 纳斯达克ETF', '512800 银行ETF', '159928 消费ETF'],
+    etf_us: ['AAPL', 'BAC', 'KO', 'CVX', 'BRK.B'],
+  },
+  {
+    id: 'pelosi',
+    name: '佩洛西科技重仓',
+    nameEn: 'Pelosi Portfolio',
+    creator: 'Nancy Pelosi · 美国众议院',
+    year: 2021,
+    risk: 'high',
+    tags: [],
+    description: '根据美国《股票法案》强制披露的国会议员交易报告还原：重仓美国科技龙头（英伟达、苹果、微软、谷歌），大量使用期权放大收益，高度集中于AI与半导体赛道，2023年同类跟踪组合涨幅超65%。',
+    philosophy: '押注美国科技产业的长期主导地位，在政策信息最前沿布局科技龙头及其衍生品，集中享受AI时代超额红利。',
+    allocations: [
+      { asset: '半导体/AI龙头(英伟达等)', cat: 'equity',      weight: 40 },
+      { asset: '科技平台巨头(微软/谷歌)', cat: 'equity_intl', weight: 35 },
+      { asset: '消费科技(苹果等)',         cat: 'equity_em',   weight: 15 },
+      { asset: '现金/短债',                cat: 'cash',        weight: 10 },
+    ],
+    perf: { ret: 28.0, dd: -52.0, sharpe: 0.73, vol: 35.0 },
+    rebalance: '机会性调整',
+    suitable: ['高风险偏好者', 'AI/科技赛道信仰者', '可承受极高波动'],
+    envs: ['科技牛市', 'AI产业爆发期', '宽松货币政策'],
+    etf_cn: ['159941 纳斯达克ETF', '516160 半导体ETF', '159659 科创50ETF'],
+    etf_us: ['NVDA', 'AAPL', 'MSFT', 'GOOGL', 'SMH'],
+  },
+  {
+    id: 'lynch',
+    name: '彼得·林奇成长组合',
+    nameEn: 'Peter Lynch Growth Portfolio',
+    creator: 'Peter Lynch · 富达麦哲伦基金',
+    year: 1977,
+    risk: 'high',
+    tags: ['intl'],
+    description: '彼得·林奇管理麦哲伦基金13年（1977-1990）实现年化29%的投资风格：广泛持有消费、零售、医疗领域成长股，持有数百只个股，"让赢家奔跑，及时止损输家"。',
+    philosophy: '"在你家门口就能找到十倍股。" 普通投资者通过日常生活观察能发现机构忽视的机会。不要害怕分散，重仓真正了解的行业。',
+    allocations: [
+      { asset: '消费零售成长股', cat: 'equity',      weight: 40 },
+      { asset: '医疗健康股',    cat: 'equity_intl', weight: 20 },
+      { asset: '金融成长股',    cat: 'equity_em',   weight: 20 },
+      { asset: '工业/科技股',   cat: 'alternative', weight: 10 },
+      { asset: '现金(机会储备)', cat: 'cash',        weight: 10 },
+    ],
+    perf: { ret: 14.5, dd: -38.0, sharpe: 0.68, vol: 20.0 },
+    rebalance: '持续监控，季度调整',
+    suitable: ['成长型投资者', '勤于研究者', '中长期持有'],
+    envs: ['经济扩张期', '消费升级周期'],
+    etf_cn: ['159928 消费ETF', '512010 医药ETF', '510300 沪深300ETF'],
+    etf_us: ['VCR', 'VHT', 'VFH', 'VIS'],
+  },
+  {
+    id: 'munger',
+    name: '芒格集中价值',
+    nameEn: 'Charlie Munger Concentrated Value',
+    creator: 'Charlie Munger · 伯克希尔哈撒韦',
+    year: 1962,
+    risk: 'high',
+    tags: ['intl'],
+    description: '芒格奉行的集中持仓哲学：将资金集中在3-5家真正理解且具有强大护城河的企业，长期持有，不因短期波动动摇。晚年重仓阿里巴巴（后大幅亏损）、比亚迪（涨幅数十倍）等中概及港股。',
+    philosophy: '"如果你把投资限制在一生仅有的20次机会，你会更加谨慎。" 与其分散持有100只平庸公司，不如集中持有5只卓越企业，持有本身就是答案。',
+    allocations: [
+      { asset: '美国消费/金融龙头', cat: 'equity',      weight: 40 },
+      { asset: '中国优质龙头',      cat: 'equity_intl', weight: 35 },
+      { asset: '新兴市场优质股',    cat: 'equity_em',   weight: 15 },
+      { asset: '现金(机会储备)',     cat: 'cash',        weight: 10 },
+    ],
+    perf: { ret: 15.5, dd: -55.0, sharpe: 0.58, vol: 26.0 },
+    rebalance: '极少调整，以持有为主',
+    suitable: ['深度研究型投资者', '价值投资信徒', '心理素质极强者'],
+    envs: ['长期任何环境', '价值低估时加仓'],
+    etf_cn: ['510300 沪深300ETF', '159920 恒生科技ETF', '513050 中概互联ETF'],
+    etf_us: ['BRK.B', 'KO', 'FXI', 'KWEB'],
+  },
+  {
+    id: 'soros',
+    name: '索罗斯宏观对冲',
+    nameEn: 'Soros Macro Hedge Portfolio',
+    creator: 'George Soros · 量子基金',
+    year: 1973,
+    risk: 'high',
+    tags: ['gold', 'intl'],
+    description: '索罗斯量子基金的宏观对冲投资风格：基于全球宏观经济判断灵活配置，在外汇、大宗商品、股票之间大幅轮动。以1992年做空英镑获利10亿美元等标志性交易闻名，年化约30%（成立至2011年）。',
+    philosophy: '"市场总是处于某种偏见之中，这种偏见会影响价格并催生可利用的趋势。" 识别反身性规律，顺势重仓，在趋势逆转前果断撤退。',
+    allocations: [
+      { asset: '全球股票多头',  cat: 'equity',    weight: 35 },
+      { asset: '黄金/大宗商品', cat: 'gold',      weight: 25 },
+      { asset: '新兴市场',      cat: 'equity_em', weight: 20 },
+      { asset: '全球债券',      cat: 'bond',      weight: 12 },
+      { asset: '现金/衍生品',   cat: 'cash',      weight: 8  },
+    ],
+    perf: { ret: 20.0, dd: -35.0, sharpe: 0.90, vol: 22.0 },
+    rebalance: '动态调整，基于宏观研判',
+    suitable: ['高级宏观投资者', '可承受极高波动', '有深度研究能力'],
+    envs: ['宏观趋势明确时', '货币政策转折期', '地缘政治动荡期'],
+    etf_cn: ['518880 黄金ETF', '159941 纳斯达克ETF', '159937 原油ETF'],
+    etf_us: ['GLD', 'EEM', 'TBT', 'UUP', 'SPY'],
+  },
+  {
+    id: 'simons',
+    name: '西蒙斯量化多元',
+    nameEn: 'Simons Quant Portfolio',
+    creator: 'Jim Simons · 文艺复兴科技',
+    year: 1988,
+    risk: 'mid',
+    tags: ['gold', 'intl'],
+    description: '文艺复兴科技大奖章基金的量化投资风格：纯数学和统计驱动，在股票、期货、外汇、大宗商品中寻找微小统计套利机会，持续高频调整。大奖章基金1988-2018年税前年化66%，堪称人类投资史之最。普通投资者可通过宽基ETF模拟其多元分散特征。',
+    philosophy: '"我不想成为英雄，只想每天小赚一点。" 数学和统计模型优于一切主观判断。极度分散、持续轮动，在市场噪音中系统性捕捉信号。',
+    allocations: [
+      { asset: '美国股票',  cat: 'equity',      weight: 30 },
+      { asset: '境外股票',  cat: 'equity_intl', weight: 20 },
+      { asset: '大宗商品期货', cat: 'commodity', weight: 20 },
+      { asset: '黄金',      cat: 'gold',        weight: 15 },
+      { asset: '全球债券',  cat: 'bond',        weight: 15 },
+    ],
+    perf: { ret: 18.5, dd: -22.0, sharpe: 1.45, vol: 12.5 },
+    rebalance: '算法自动，持续动态调整',
+    suitable: ['量化爱好者', '追求高风险调整收益', '相信数学规律者'],
+    envs: ['任何市场环境（策略自适应）'],
+    etf_cn: ['510300 沪深300ETF', '518880 黄金ETF', '159980 有色金属ETF', '511010 国债ETF'],
+    etf_us: ['VT', 'DJP', 'GLD', 'BND'],
+  },
+
+  // ── 国内大佬系列 ──
+  {
+    id: 'danbin',
+    name: '但斌长期持有',
+    nameEn: 'Dan Bin Long-Term Hold',
+    creator: '但斌 · 东方港湾投资',
+    year: 2004,
+    risk: 'high',
+    tags: ['intl'],
+    description: '东方港湾创始人但斌的核心策略：重仓中国消费白酒龙头（贵州茅台）和全球科技平台（腾讯、苹果），极少交易，以"陪伴伟大企业成长"为宗旨，是A股最坚定的长期主义代表之一。',
+    philosophy: '"投资就是买股份，陪伴一家伟大的公司从小到大。" 选择具有长期竞争壁垒的龙头企业，忍受短期波动，等待时间的玫瑰绽放。',
+    allocations: [
+      { asset: '白酒消费龙头(茅台等)', cat: 'equity',      weight: 45 },
+      { asset: '中国互联网(腾讯等)',   cat: 'equity_intl', weight: 25 },
+      { asset: '全球科技(苹果等)',     cat: 'equity_em',   weight: 15 },
+      { asset: '现金/固收',            cat: 'cash',        weight: 15 },
+    ],
+    perf: { ret: 12.5, dd: -42.0, sharpe: 0.55, vol: 22.0 },
+    rebalance: '极少调整，长期持有',
+    suitable: ['长期主义者', '消费行业信仰者', '耐心持有10年以上'],
+    envs: ['中国消费升级周期', '企业盈利稳健增长期'],
+    etf_cn: ['512690 白酒ETF', '513050 中概互联ETF', '510300 沪深300ETF'],
+    etf_us: ['AAPL', 'BABA', 'KWEB'],
+  },
+  {
+    id: 'linyuan',
+    name: '林园消费医药重仓',
+    nameEn: 'Lin Yuan Consumer & Pharma',
+    creator: '林园 · 林园投资',
+    year: 1989,
+    risk: 'high',
+    tags: [],
+    description: '林园以1.5万元起家，通过重仓中国消费与医药龙头（贵州茅台、片仔癀、云南白药、招商银行）实现财富数十亿。以极度集中、长期持有著称，持仓少则3只，多则不超过10只。',
+    philosophy: '"我只买我能看懂的垄断性企业，看不懂的一概不碰。" 选择具有定价权和品牌壁垒的消费/医药龙头，重仓持有，赚企业成长的钱。',
+    allocations: [
+      { asset: '白酒/消费品龙头(茅台/五粮液)', cat: 'equity',      weight: 45 },
+      { asset: '中医药龙头(片仔癀/云南白药)',  cat: 'equity_intl', weight: 30 },
+      { asset: '金融龙头(招商银行等)',          cat: 'equity_em',   weight: 15 },
+      { asset: '现金(大量备用)',                cat: 'cash',        weight: 10 },
+    ],
+    perf: { ret: 15.0, dd: -48.0, sharpe: 0.58, vol: 25.0 },
+    rebalance: '机会性调整，持仓极为集中',
+    suitable: ['消费/医药行业研究者', '高风险承受力', '长期持有信仰者'],
+    envs: ['中国居民消费升级', '医疗健康需求扩张期'],
+    etf_cn: ['512690 白酒ETF', '512010 医药ETF', '512800 银行ETF'],
+    etf_us: ['CQQQ', 'FXI'],
+  },
+  {
+    id: 'zhangkun',
+    name: '张坤消费龙头',
+    nameEn: 'Zhang Kun Consumer Leaders',
+    creator: '张坤 · 易方达基金',
+    year: 2012,
+    risk: 'high',
+    tags: ['intl'],
+    description: '易方达明星基金经理张坤的投资风格：高度集中于A股和港股消费、白酒、互联网龙头（茅台、洋河、五粮液、腾讯、美团），持股集中度极高，单只基金规模曾超千亿。2021年高点后遭遇大幅回撤。',
+    philosophy: '"我们希望持有那些拥有持久竞争优势、管理层优秀且估值合理的公司。" 在中国消费升级的大背景下，深度持有行业龙头，用时间换取空间。',
+    allocations: [
+      { asset: '白酒龙头(茅台/洋河/五粮液)', cat: 'equity',      weight: 50 },
+      { asset: '互联网平台(腾讯/美团)',       cat: 'equity_intl', weight: 30 },
+      { asset: '其他消费/医疗',               cat: 'equity_em',   weight: 15 },
+      { asset: '现金',                        cat: 'cash',        weight: 5  },
+    ],
+    perf: { ret: 18.0, dd: -38.0, sharpe: 0.72, vol: 24.0 },
+    rebalance: '每季度审视，小幅调整',
+    suitable: ['消费行业看好者', '中长期持有', 'A股/港股投资者'],
+    envs: ['中国消费复苏期', '居民收入增长期'],
+    etf_cn: ['512690 白酒ETF', '159920 恒生科技ETF', '159928 消费ETF'],
+    etf_us: ['KWEB', 'FXI', 'CQQQ'],
+  },
+  {
+    id: 'duanyongping',
+    name: '段永平价值集中',
+    nameEn: 'Duan Yongping Value Concentrated',
+    creator: '段永平 · 步步高/OPPO/vivo创始人',
+    year: 2001,
+    risk: 'high',
+    tags: ['intl'],
+    description: '步步高系创始人段永平的个人投资风格：深度研究后重仓极少数"本分"企业，长期持有。重仓苹果（2011年大量买入）、腾讯、网易，并以天价午餐与巴菲特结缘。以"做正确的事"和"不短视"著称。',
+    philosophy: '"投资最重要的是不要亏钱，然后才是赚钱。做对的事情，把事情做对。" 在深度理解商业模式后，重仓持有，无视市场短期噪音。',
+    allocations: [
+      { asset: '美国科技消费(苹果)',  cat: 'equity',      weight: 50 },
+      { asset: '中国互联网(腾讯/网易)', cat: 'equity_intl', weight: 35 },
+      { asset: '其他优质股权',        cat: 'equity_em',   weight: 10 },
+      { asset: '现金(安全垫)',        cat: 'cash',        weight: 5  },
+    ],
+    perf: { ret: 22.0, dd: -45.0, sharpe: 0.80, vol: 27.0 },
+    rebalance: '几乎不调整，逢低加仓',
+    suitable: ['深度研究型投资者', '中美互联网看好者', '超长期持有'],
+    envs: ['中美科技产业增长期', '平台经济扩张期'],
+    etf_cn: ['513500 标普500ETF', '513050 中概互联ETF', '159920 恒生科技ETF'],
+    etf_us: ['AAPL', 'TCEHY', 'NTES'],
+  },
+
+  // ── 更多国际大佬 ──
+  {
+    id: 'marks',
+    name: '霍华德·马克斯信用组合',
+    nameEn: 'Howard Marks Credit Portfolio',
+    creator: 'Howard Marks · 橡树资本',
+    year: 1995,
+    risk: 'mid',
+    tags: [],
+    description: '橡树资本创始人霍华德·马克斯专注于信用投资和不良债务：重仓高收益债券、不良资产和特殊情境投资，在市场恐慌时逆向买入被错杀的信用资产，以"第二层思维"著称。',
+    philosophy: '"最重要的事只有一件：控制风险。" 在别人贪婪时恐惧，在别人恐惧时贪婪。优质的高收益债在风险调整后往往优于股票。',
+    allocations: [
+      { asset: '高收益债券',   cat: 'bond_long',  weight: 40 },
+      { asset: '不良资产/特殊情境', cat: 'alternative', weight: 25 },
+      { asset: '优质企业债',   cat: 'bond_mid',   weight: 20 },
+      { asset: '股票(少量)',   cat: 'equity',     weight: 10 },
+      { asset: '现金',         cat: 'cash',       weight: 5  },
+    ],
+    perf: { ret: 11.5, dd: -25.0, sharpe: 0.88, vol: 10.5 },
+    rebalance: '机会性调整，危机时加大买入',
+    suitable: ['固收偏好者', '逆向投资者', '风险厌恶型机构'],
+    envs: ['信用危机后修复期', '利率下行周期', '市场极度恐慌时'],
+    etf_cn: ['511010 国债ETF', '511030 企债ETF', '511220 城投债ETF'],
+    etf_us: ['HYG', 'JNK', 'SRLN', 'AGG'],
+  },
+  {
+    id: 'norway',
+    name: '挪威主权财富基金',
+    nameEn: 'Norway Government Pension Fund Global',
+    creator: '挪威银行投资管理 (NBIM)',
+    year: 1998,
+    risk: 'mid',
+    tags: ['intl', 'reit'],
+    description: '全球最大主权财富基金（规模超1.7万亿美元），持有全球8000余家上市公司股票，约占全球股市1.5%。以超长期视角、高度分散、低费率、ESG责任投资著称，是机构资产管理的标杆范本。',
+    philosophy: '为挪威后代管理石油财富，以超长期视角分散投资全球资产，不做择时，不追热点，以低成本指数化方式参与全球经济增长。',
+    allocations: [
+      { asset: '全球股票(72%)', cat: 'equity',      weight: 44 },
+      { asset: '境外发达市场股', cat: 'equity_intl', weight: 22 },
+      { asset: '新兴市场股',    cat: 'equity_em',   weight: 6  },
+      { asset: '全球债券',      cat: 'bond',        weight: 25 },
+      { asset: '非上市房地产',  cat: 'reit',        weight: 3  },
+    ],
+    perf: { ret: 6.8, dd: -23.3, sharpe: 0.52, vol: 10.8 },
+    rebalance: '每年按目标权重再平衡',
+    suitable: ['超长期机构投资者', '追求全球分散', '低风险偏好的稳健配置'],
+    envs: ['全球经济长期增长', '多种市场环境均适用'],
+    etf_cn: ['513500 标普500ETF', '159920 恒生ETF', '511010 国债ETF', '180012 华夏REITs'],
+    etf_us: ['VT', 'BND', 'VNQI'],
+  },
+  {
+    id: 'paulson',
+    name: '鲍尔森黄金价值',
+    nameEn: 'Paulson Gold & Value Portfolio',
+    creator: 'John Paulson · 鲍尔森对冲基金',
+    year: 2009,
+    risk: 'high',
+    tags: ['gold'],
+    description: '鲍尔森以2007-2008年做空次贷危机赚取200亿美元声名大噪，此后转型大量持有黄金和黄金矿业股（最高时黄金持仓占比超50%），同时配置价值低估的并购套利标的。',
+    philosophy: '"黄金是对抗货币贬值最好的保险。" 在央行无限量化宽松的时代，黄金是唯一无法被增发的货币，持有黄金是对抗通胀和系统性风险的终极手段。',
+    allocations: [
+      { asset: '实物黄金/黄金ETF', cat: 'gold',      weight: 35 },
+      { asset: '黄金矿业股',       cat: 'commodity', weight: 25 },
+      { asset: '价值低估股/并购套利', cat: 'equity', weight: 25 },
+      { asset: '现金/短债',        cat: 'cash',      weight: 15 },
+    ],
+    perf: { ret: 9.5, dd: -65.0, sharpe: 0.35, vol: 28.0 },
+    rebalance: '机会性调整',
+    suitable: ['黄金信仰者', '通胀担忧者', '可承受极高波动'],
+    envs: ['通胀高企', '货币宽松周期', '金融系统风险上升时'],
+    etf_cn: ['518880 黄金ETF', '159562 黄金矿业ETF', '510300 沪深300ETF'],
+    etf_us: ['GLD', 'GDX', 'GDXJ'],
+  },
+];
+
+// ──────────────────────────────────────────────
+// CATEGORY MAP
+// ──────────────────────────────────────────────
+const SCHEME_CAT = {
+  'all-weather': 'classic', 'permanent': 'classic', '60-40': 'classic',
+  'yale': 'classic', 'three-fund': 'classic', 'graham': 'classic',
+  'aggressive': 'classic', 'conservative': 'classic',
+  'golden-butterfly': 'classic', 'global-market': 'classic',
+  'buffett-will': 'intl', 'berkshire': 'intl', 'pelosi': 'intl',
+  'lynch': 'intl', 'munger': 'intl', 'soros': 'intl', 'simons': 'intl',
+  'marks': 'intl', 'norway': 'intl', 'paulson': 'intl',
+  'danbin': 'cn', 'linyuan': 'cn', 'zhangkun': 'cn', 'duanyongping': 'cn',
+};
+
+// ──────────────────────────────────────────────
+// STATE
+// ──────────────────────────────────────────────
+let filters = { risk: 'all', type: 'all', cat: 'all' };
+let sortBy = 'default';
+let searchQ = '';
+let selectedIds = [];
+let miniCharts = {};
+
+// ──────────────────────────────────────────────
+// RENDER
+// ──────────────────────────────────────────────
+function getFiltered() {
+  let data = [...SCHEMES];
+  if (filters.risk !== 'all') data = data.filter(s => s.risk === filters.risk);
+  if (filters.type !== 'all') {
+    if (filters.type === 'gold') data = data.filter(s => s.tags.includes('gold'));
+    else if (filters.type === 'intl') data = data.filter(s => s.tags.includes('intl'));
+    else if (filters.type === 'reit') data = data.filter(s => s.tags.includes('reit'));
+    else if (filters.type === 'pure') data = data.filter(s => s.tags.includes('pure'));
+  }
+  if (filters.cat !== 'all') data = data.filter(s => SCHEME_CAT[s.id] === filters.cat);
+  if (searchQ) {
+    const q = searchQ.toLowerCase();
+    data = data.filter(s => s.name.includes(q) || s.nameEn.toLowerCase().includes(q) || s.creator.toLowerCase().includes(q));
+  }
+  if (sortBy === 'return') data.sort((a, b) => b.perf.ret - a.perf.ret);
+  else if (sortBy === 'drawdown') data.sort((a, b) => b.perf.dd - a.perf.dd);
+  else if (sortBy === 'sharpe') data.sort((a, b) => b.perf.sharpe - a.perf.sharpe);
+  return data;
+}
+
+function riskLabel(r) {
+  return r === 'low' ? '低风险' : r === 'mid' ? '中风险' : '高风险';
+}
+function riskClass(r) {
+  return r === 'low' ? 'risk-low' : r === 'mid' ? 'risk-mid' : 'risk-high';
+}
+
+function renderGrid() {
+  const data = getFiltered();
+  const grid = document.getElementById('grid');
+  document.getElementById('countLabel').textContent = `共 ${data.length} 个方案`;
+
+  // destroy old mini charts
+  Object.values(miniCharts).forEach(c => c.destroy());
+  miniCharts = {};
+
+  if (data.length === 0) {
+    grid.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><div>没有找到匹配的方案</div></div>`;
+    return;
+  }
+
+  grid.innerHTML = data.map(s => {
+    const isSel = selectedIds.includes(s.id);
+    return `
+    <div class="card ${isSel ? 'selected' : ''}" id="card-${s.id}" onclick="openModal('${s.id}')">
+      <div class="select-dot" id="dot-${s.id}">${isSel ? '✓' : ''}</div>
+      <div class="card-header">
+        <div class="card-name">${s.name}</div>
+        <div class="risk-badge ${riskClass(s.risk)}">${riskLabel(s.risk)}</div>
+      </div>
+      <div class="card-creator">${s.creator} · ${s.year}${SCHEME_CAT[s.id] === 'intl' ? ' <span class="guru-badge guru-intl">国际大佬</span>' : SCHEME_CAT[s.id] === 'cn' ? ' <span class="guru-badge guru-cn">国内大佬</span>' : ''}</div>
+      <div class="chart-wrap"><canvas id="mini-${s.id}"></canvas></div>
+      <div class="card-metrics">
+        <div class="metric"><div class="metric-val pos">${s.perf.ret}%</div><div class="metric-lbl">年化收益</div></div>
+        <div class="metric"><div class="metric-val neg">${s.perf.dd}%</div><div class="metric-lbl">最大回撤</div></div>
+        <div class="metric"><div class="metric-val neu">${s.perf.sharpe}</div><div class="metric-lbl">夏普比率</div></div>
+      </div>
+      <div class="card-footer" onclick="event.stopPropagation()">
+        <button class="btn btn-primary" onclick="openModal('${s.id}')">查看详情</button>
+        <button class="btn btn-outline ${isSel ? 'selected-btn' : ''}" id="cmpbtn-${s.id}" onclick="toggleCompare('${s.id}')">
+          ${isSel ? '✓ 已选' : '+ 对比'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // draw mini charts after DOM update
+  requestAnimationFrame(() => {
+    data.forEach(s => drawMiniChart(s));
+  });
+}
+
+function drawMiniChart(s) {
+  const canvas = document.getElementById(`mini-${s.id}`);
+  if (!canvas) return;
+  if (miniCharts[s.id]) miniCharts[s.id].destroy();
+  miniCharts[s.id] = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: s.allocations.map(a => a.asset),
+      datasets: [{
+        data: s.allocations.map(a => a.weight),
+        backgroundColor: s.allocations.map(a => CAT_COLORS[a.cat]),
+        borderWidth: 2,
+        borderColor: '#fff',
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      cutout: '60%',
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}%` }
+      }},
+    }
+  });
+}
+
+// ──────────────────────────────────────────────
+// GROWTH SIMULATION
+// ──────────────────────────────────────────────
+function simGrowth(s, years = 10) {
+  const seed = s.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  let r = seed;
+  const rand = () => { r = (r * 1664525 + 1013904223) >>> 0; return r / 0xffffffff; };
+  const monthlyRet = s.perf.ret / 100 / 12;
+  const monthlyVol = s.perf.vol / 100 / Math.sqrt(12);
+  let val = 10000;
+  const vals = [10000];
+  const labels = ['起始'];
+  for (let i = 1; i <= years * 12; i++) {
+    val *= (1 + monthlyRet + monthlyVol * (rand() * 2 - 1) * 0.9);
+    if (val < 0) val = 0.1;
+    if (i % 12 === 0) { vals.push(+val.toFixed(1)); labels.push(`第${i/12}年`); }
+  }
+  return { vals, labels };
+}
+
+// ──────────────────────────────────────────────
+// MODAL
+// ──────────────────────────────────────────────
+let modalChart = null;
+let growthChart = null;
+
+function openModal(id) {
+  const s = SCHEMES.find(x => x.id === id);
+  if (!s) return;
+
+  document.getElementById('modalTitle').textContent = s.name;
+  document.getElementById('modalSub').textContent = `${s.nameEn}  ·  ${s.creator}  ·  ${s.year}年`;
+
+  const isSel = selectedIds.includes(s.id);
+
+  document.getElementById('modalBody').innerHTML = `
+    <div class="modal-top">
+      <div>
+        <div class="modal-chart-wrap"><canvas id="modal-chart"></canvas></div>
+      </div>
+      <div>
+        <div class="section-title" style="margin-bottom:8px">资产配置</div>
+        <table class="alloc-table">
+          <thead><tr><th>资产</th><th>权重</th><th>占比</th></tr></thead>
+          <tbody>
+            ${s.allocations.map(a => `
+            <tr>
+              <td><span class="alloc-dot" style="background:${CAT_COLORS[a.cat]}"></span>${a.asset}</td>
+              <td style="font-weight:700;font-size:15px">${a.weight}%</td>
+              <td style="width:100px">
+                <div class="alloc-bar-wrap">
+                  <div class="alloc-bar" style="width:${a.weight}%;background:${CAT_COLORS[a.cat]}"></div>
+                </div>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="metrics-row">
+      <div class="metric-card">
+        <div class="val pos">${s.perf.ret}%</div>
+        <div class="lbl">年化历史收益</div>
+      </div>
+      <div class="metric-card">
+        <div class="val neg">${s.perf.dd}%</div>
+        <div class="lbl">历史最大回撤</div>
+      </div>
+      <div class="metric-card">
+        <div class="val neu">${s.perf.sharpe}</div>
+        <div class="lbl">夏普比率</div>
+      </div>
+      <div class="metric-card">
+        <div class="val" style="color:#8B5CF6">${s.perf.vol}%</div>
+        <div class="lbl">年化波动率</div>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="section-title">模拟10年增长（初始10,000元，基于历史估算）</div>
+      <div class="growth-wrap"><canvas id="growth-chart"></canvas></div>
+    </div>
+
+    <div class="modal-section">
+      <div class="section-title">设计理念</div>
+      <p class="desc-text">${s.description}</p>
+      <p class="desc-text" style="margin-top:8px;font-style:italic">"${s.philosophy}"</p>
+    </div>
+
+    <div class="modal-section" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div class="section-title">适合人群</div>
+        <div class="tags-wrap">${s.suitable.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+      </div>
+      <div>
+        <div class="section-title">适用市场环境</div>
+        <div class="tags-wrap">${s.envs.map(t => `<span class="tag env">${t}</span>`).join('')}</div>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="section-title">再平衡建议</div>
+      <p class="desc-text">⏱ ${s.rebalance}</p>
+    </div>
+
+    <div class="modal-section">
+      <div class="section-title">A股 / 美股 ETF 参考清单</div>
+      <div class="etf-section">
+        <div class="etf-group">
+          <h4>🇨🇳 A股 ETF</h4>
+          <div class="etf-list">${s.etf_cn.map(e => `<div class="etf-item">${e}</div>`).join('')}</div>
+        </div>
+        <div class="etf-group">
+          <h4>🇺🇸 美股 ETF</h4>
+          <div class="etf-list">${s.etf_us.map(e => `<div class="etf-item">${e}</div>`).join('')}</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn btn-primary" style="flex:none;padding:10px 24px" onclick="closeModalDirect()">关闭</button>
+      <button class="btn btn-outline ${isSel ? 'selected-btn' : ''}" style="flex:none;padding:10px 24px" onclick="toggleCompare('${s.id}');this.textContent=selectedIds.includes('${s.id}')?'✓ 已加入对比':'+ 加入对比';this.className='btn btn-outline'+(selectedIds.includes('${s.id}')?' selected-btn':'')">${isSel ? '✓ 已加入对比' : '+ 加入对比'}</button>
+    </div>
+  `;
+
+  document.getElementById('overlay').classList.add('open');
+
+  requestAnimationFrame(() => {
+    // growth chart
+    const gCanvas = document.getElementById('growth-chart');
+    if (gCanvas) {
+      if (growthChart) growthChart.destroy();
+      const { vals, labels } = simGrowth(s);
+      const color = s.perf.ret >= 10 ? '#3B82F6' : s.perf.ret >= 7 ? '#10B981' : '#F59E0B';
+      growthChart = new Chart(gCanvas, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            data: vals,
+            borderColor: color,
+            backgroundColor: color + '18',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 3,
+            pointBackgroundColor: color,
+            borderWidth: 2,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ¥${ctx.parsed.y}` } } },
+          scales: {
+            x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+            y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 }, callback: v => '¥' + v } }
+          }
+        }
+      });
+    }
+
+    const canvas = document.getElementById('modal-chart');
+    if (!canvas) return;
+    if (modalChart) modalChart.destroy();
+    modalChart = new Chart(canvas, {
+      type: 'doughnut',
+      data: {
+        labels: s.allocations.map(a => a.asset),
+        datasets: [{
+          data: s.allocations.map(a => a.weight),
+          backgroundColor: s.allocations.map(a => CAT_COLORS[a.cat]),
+          borderWidth: 3,
+          borderColor: '#fff',
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        cutout: '55%',
+        plugins: {
+          legend: {
+            display: true,
+            position: 'bottom',
+            labels: { font: { size: 11 }, padding: 8, boxWidth: 10 }
+          },
+          tooltip: {
+            callbacks: { label: ctx => ` ${ctx.label}: ${ctx.parsed}%` }
+          }
+        },
+      }
+    });
+  });
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('overlay')) closeModalDirect();
+}
+function closeModalDirect() {
+  document.getElementById('overlay').classList.remove('open');
+  if (growthChart) { growthChart.destroy(); growthChart = null; }
+}
+
+// ──────────────────────────────────────────────
+// COMPARE
+// ──────────────────────────────────────────────
+function toggleCompare(id) {
+  const idx = selectedIds.indexOf(id);
+  if (idx === -1) {
+    if (selectedIds.length >= 4) { alert('最多同时对比 4 个方案'); return; }
+    selectedIds.push(id);
+  } else {
+    selectedIds.splice(idx, 1);
+  }
+  updateCompareBadge();
+  renderGrid();
+  if (document.getElementById('comparePanel').classList.contains('open')) {
+    renderCompareTable();
+  }
+}
+
+function updateCompareBadge() {
+  const btn = document.getElementById('compareBtn');
+  const countEl = document.getElementById('compareCount');
+  if (selectedIds.length > 0) {
+    btn.classList.add('visible');
+    countEl.textContent = `对比 ${selectedIds.length} 个方案`;
+  } else {
+    btn.classList.remove('visible');
+    document.getElementById('comparePanel').classList.remove('open');
+  }
+}
+
+function openCompare() {
+  document.getElementById('comparePanel').classList.add('open');
+  renderCompareTable();
+}
+
+function closeComparePanel() {
+  document.getElementById('comparePanel').classList.remove('open');
+}
+
+function renderCompareTable() {
+  const schemes = selectedIds.map(id => SCHEMES.find(s => s.id === id)).filter(Boolean);
+  if (schemes.length === 0) return;
+
+  const metrics = [
+    { key: 'ret', label: '年化收益', unit: '%', better: 'higher' },
+    { key: 'dd',  label: '最大回撤', unit: '%', better: 'higher' },
+    { key: 'sharpe', label: '夏普比率', unit: '', better: 'higher' },
+    { key: 'vol', label: '波动率',   unit: '%', better: 'lower' },
+  ];
+
+  const bestVals = {};
+  metrics.forEach(m => {
+    const vals = schemes.map(s => s.perf[m.key]);
+    bestVals[m.key] = m.better === 'higher' ? Math.max(...vals) : Math.min(...vals);
+  });
+
+  let html = `<div style="overflow-x:auto"><table class="compare-table">
+    <thead><tr>
+      <th>指标</th>
+      ${schemes.map(s => `<th>${s.name}<br/><span style="font-weight:400;color:#94a3b8;font-size:11px">${riskLabel(s.risk)}</span></th>`).join('')}
+    </tr></thead>
+    <tbody>`;
+
+  metrics.forEach(m => {
+    html += `<tr><td style="color:var(--text-sub);font-weight:500">${m.label}</td>`;
+    schemes.forEach(s => {
+      const v = s.perf[m.key];
+      const isBest = v === bestVals[m.key];
+      html += `<td class="${isBest ? 'best' : ''}">${v}${m.unit}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += `<tr><td style="color:var(--text-sub);font-weight:500">再平衡</td>`;
+  schemes.forEach(s => { html += `<td style="font-size:12px">${s.rebalance}</td>`; });
+  html += '</tr>';
+
+  html += `<tr><td style="color:var(--text-sub);font-weight:500">适合人群</td>`;
+  schemes.forEach(s => {
+    html += `<td><div style="display:flex;flex-wrap:wrap;gap:4px">${s.suitable.map(t => `<span class="tag" style="font-size:11px">${t}</span>`).join('')}</div></td>`;
+  });
+  html += '</tr>';
+
+  html += '</tbody></table></div>';
+  document.getElementById('compareTableWrap').innerHTML = html;
+}
+
+// ──────────────────────────────────────────────
+// EVENTS
+// ──────────────────────────────────────────────
+document.querySelectorAll('[data-filter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const f = btn.dataset.filter;
+    document.querySelectorAll(`[data-filter="${f}"]`).forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filters[f] = btn.dataset.val;
+    renderGrid();
+  });
+});
+
+document.getElementById('sortSelect').addEventListener('change', e => {
+  sortBy = e.target.value;
+  renderGrid();
+});
+
+document.getElementById('searchInput').addEventListener('input', e => {
+  searchQ = e.target.value.trim();
+  renderGrid();
+});
+
+// ──────────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────────
+renderGrid();
+</script>
+</body>
+</html>
