@@ -308,6 +308,45 @@
     /* ── GROWTH CHART ── */
     .growth-wrap { width: 100%; height: 180px; margin: 0 0 4px; }
 
+    /* ── AVATAR ── */
+    .av {
+      border-radius: 50%;
+      flex-shrink: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: #fff;
+      box-shadow: 0 2px 10px rgba(0,0,0,.22);
+      transition: box-shadow .2s;
+    }
+    .av img { width: 100%; height: 100%; object-fit: cover; object-position: center top; display: block; }
+
+    .card-header-new {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .card-header-info { flex: 1; min-width: 0; }
+    .card-header-info .card-name {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 3px;
+    }
+    .card-creator-mini {
+      font-size: 11px;
+      color: var(--text-sub);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     /* ── RECENT PERFORMANCE ── */
     .card-recent {
       display: flex;
@@ -1054,10 +1093,82 @@ const SCHEME_CAT = {
 };
 
 // ──────────────────────────────────────────────
+// AVATAR CONFIG
+// ──────────────────────────────────────────────
+// type:'wiki' → fetch Wikipedia thumbnail; type:'initials' → styled letter avatar
+const AVATAR_CFG = {
+  'all-weather':      { type:'wiki', slug:'Ray_Dalio',                          initials:'RD', bg:['#1e3a5f','#2563EB'] },
+  'permanent':        { type:'wiki', slug:'Harry_Browne',                       initials:'HB', bg:['#14532d','#16a34a'] },
+  '60-40':            { type:'initials',                                         initials:'60\n40', bg:['#334155','#64748b'] },
+  'yale':             { type:'wiki', slug:'David_Swensen',                      initials:'DS', bg:['#00356B','#1d4ed8'] },
+  'three-fund':       { type:'wiki', slug:'John_C._Bogle',                      initials:'JB', bg:['#991b1b','#dc2626'] },
+  'graham':           { type:'wiki', slug:'Benjamin_Graham',                    initials:'BG', bg:['#1e3a5f','#1d4ed8'] },
+  'aggressive':       { type:'initials',                                         initials:'80%', bg:['#c2410c','#f97316'] },
+  'conservative':     { type:'initials',                                         initials:'20%', bg:['#0f766e','#14b8a6'] },
+  'golden-butterfly': { type:'initials',                                         initials:'🦋',  bg:['#b45309','#f59e0b'] },
+  'global-market':    { type:'initials',                                         initials:'🌍',  bg:['#1d4ed8','#3b82f6'] },
+  'buffett-will':     { type:'wiki', slug:'Warren_Buffett',                     initials:'WB', bg:['#7c2d12','#dc2626'] },
+  'berkshire':        { type:'wiki', slug:'Berkshire_Hathaway',                 initials:'BH', bg:['#991b1b','#b91c1c'] },
+  'pelosi':           { type:'wiki', slug:'Nancy_Pelosi',                       initials:'NP', bg:['#1e3a8a','#2563eb'] },
+  'lynch':            { type:'wiki', slug:'Peter_Lynch',                        initials:'PL', bg:['#166534','#16a34a'] },
+  'munger':           { type:'wiki', slug:'Charlie_Munger',                     initials:'CM', bg:['#44403c','#78716c'] },
+  'soros':            { type:'wiki', slug:'George_Soros',                       initials:'GS', bg:['#14532d','#15803d'] },
+  'simons':           { type:'wiki', slug:'Jim_Simons_(mathematician)',          initials:'JS', bg:['#4c1d95','#7c3aed'] },
+  'marks':            { type:'wiki', slug:'Howard_Marks_(investor)',             initials:'HM', bg:['#0e7490','#0891b2'] },
+  'norway':           { type:'wiki', slug:'Government_Pension_Fund_of_Norway',  initials:'挪威', bg:['#c0392b','#ef4444'] },
+  'paulson':          { type:'wiki', slug:'John_Paulson',                       initials:'JP', bg:['#b45309','#d97706'] },
+  'danbin':           { type:'initials',                                         initials:'但',  bg:['#991b1b','#dc2626'] },
+  'linyuan':          { type:'initials',                                         initials:'林',  bg:['#14532d','#15803d'] },
+  'zhangkun':         { type:'initials',                                         initials:'张',  bg:['#1e3a5f','#1d4ed8'] },
+  'duanyongping':     { type:'initials',                                         initials:'段',  bg:['#c2410c','#ea580c'] },
+};
+
+// ──────────────────────────────────────────────
 // HELPERS
 // ──────────────────────────────────────────────
 function fmtPct(v) { return (v > 0 ? '+' : '') + v + '%'; }
 function signCls(v) { return v > 0 ? 'val-pos' : v < 0 ? 'val-neg' : 'val-neu'; }
+
+// Avatar: render letter placeholder, then async-upgrade to Wikipedia photo
+const _wikiCache = {};
+async function _fetchWikiThumb(slug) {
+  if (_wikiCache[slug] !== undefined) return _wikiCache[slug];
+  try {
+    const r = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(slug)}`);
+    const d = await r.json();
+    _wikiCache[slug] = d.thumbnail?.source || null;
+  } catch { _wikiCache[slug] = null; }
+  return _wikiCache[slug];
+}
+
+function renderAvatarHtml(id, size) {
+  const cfg = AVATAR_CFG[id] || { initials:'?', bg:['#64748b','#94a3b8'] };
+  const [c1, c2] = cfg.bg;
+  const txt = cfg.initials;
+  const hasEmoji = /\p{Emoji_Presentation}/u.test(txt);
+  const lines = txt.split('\n');
+  const isMultiLine = lines.length > 1;
+  let inner;
+  if (isMultiLine) {
+    const fs = Math.round(size * 0.30);
+    inner = `<div style="display:flex;flex-direction:column;align-items:center;line-height:1.1;font-size:${fs}px">${lines.map(l=>`<span>${l}</span>`).join('')}</div>`;
+  } else {
+    const fs = hasEmoji ? size*0.52 : txt.length===1 ? size*0.44 : txt.length===2 ? size*0.36 : size*0.28;
+    inner = `<span style="font-size:${Math.round(fs)}px;letter-spacing:-0.5px">${txt}</span>`;
+  }
+  return `<div class="av" data-av-id="${id}" data-av-size="${size}" style="width:${size}px;height:${size}px;background:linear-gradient(135deg,${c1},${c2})">${inner}</div>`;
+}
+
+async function upgradeAvatars(id) {
+  const cfg = AVATAR_CFG[id];
+  if (!cfg || cfg.type !== 'wiki') return;
+  const url = await _fetchWikiThumb(cfg.slug);
+  if (!url) return;
+  document.querySelectorAll(`[data-av-id="${id}"]`).forEach(el => {
+    el.style.background = 'none';
+    el.innerHTML = `<img src="${url}" alt="">`;
+  });
+}
 
 // ──────────────────────────────────────────────
 // STATE
@@ -1114,14 +1225,18 @@ function renderGrid() {
 
   grid.innerHTML = data.map(s => {
     const isSel = selectedIds.includes(s.id);
+    const guruBadge = SCHEME_CAT[s.id]==='intl' ? ' <span class="guru-badge guru-intl">国际大佬</span>' : SCHEME_CAT[s.id]==='cn' ? ' <span class="guru-badge guru-cn">国内大佬</span>' : '';
     return `
     <div class="card ${isSel ? 'selected' : ''}" id="card-${s.id}" onclick="openModal('${s.id}')">
       <div class="select-dot" id="dot-${s.id}">${isSel ? '✓' : ''}</div>
-      <div class="card-header">
-        <div class="card-name">${s.name}</div>
+      <div class="card-header-new">
+        ${renderAvatarHtml(s.id, 48)}
+        <div class="card-header-info">
+          <div class="card-name">${s.name}</div>
+          <div class="card-creator-mini">${s.creator} · ${s.year}${guruBadge}</div>
+        </div>
         <div class="risk-badge ${riskClass(s.risk)}">${riskLabel(s.risk)}</div>
       </div>
-      <div class="card-creator">${s.creator} · ${s.year}${SCHEME_CAT[s.id] === 'intl' ? ' <span class="guru-badge guru-intl">国际大佬</span>' : SCHEME_CAT[s.id] === 'cn' ? ' <span class="guru-badge guru-cn">国内大佬</span>' : ''}</div>
       <div class="chart-wrap"><canvas id="mini-${s.id}"></canvas></div>
       <div class="card-metrics">
         <div class="metric"><div class="metric-val pos">${s.perf.ret}%</div><div class="metric-lbl">年化收益</div></div>
@@ -1154,9 +1269,12 @@ function renderGrid() {
     </div>`;
   }).join('');
 
-  // draw mini charts after DOM update
+  // draw mini charts + upgrade avatars after DOM update
   requestAnimationFrame(() => {
-    data.forEach(s => drawMiniChart(s));
+    data.forEach(s => {
+      drawMiniChart(s);
+      upgradeAvatars(s.id);
+    });
   });
 }
 
@@ -1216,8 +1334,17 @@ function openModal(id) {
   const s = SCHEMES.find(x => x.id === id);
   if (!s) return;
 
-  document.getElementById('modalTitle').textContent = s.name;
-  document.getElementById('modalSub').textContent = `${s.nameEn}  ·  ${s.creator}  ·  ${s.year}年`;
+  document.querySelector('#modal .modal-header').innerHTML = `
+    <div style="display:flex;align-items:center;gap:16px">
+      ${renderAvatarHtml(s.id, 68)}
+      <div>
+        <div class="modal-title">${s.name}</div>
+        <div class="modal-sub">${s.nameEn} · ${s.creator} · ${s.year}年</div>
+      </div>
+    </div>
+    <button class="modal-close" onclick="closeModalDirect()">✕</button>
+  `;
+  upgradeAvatars(s.id);
 
   const isSel = selectedIds.includes(s.id);
 
