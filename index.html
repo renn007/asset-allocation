@@ -307,6 +307,45 @@
 
     /* ── GROWTH CHART ── */
     .growth-wrap { width: 100%; height: 180px; margin: 0 0 4px; }
+
+    /* ── RECENT PERFORMANCE ── */
+    .card-recent {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 10px;
+      background: var(--bg);
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+    .recent-lbl { font-size: 11px; color: var(--text-sub); flex-shrink: 0; margin-right: 2px; }
+    .recent-item { display: flex; flex-direction: column; align-items: center; flex: 1; }
+    .recent-val { font-weight: 700; font-size: 13px; }
+    .recent-period { font-size: 10px; color: var(--text-sub); margin-top: 1px; }
+    .val-pos { color: var(--low); }
+    .val-neg { color: var(--high); }
+    .val-neu { color: var(--text-sub); }
+    .recent-divider { width: 1px; height: 24px; background: var(--border); flex-shrink: 0; }
+
+    .modal-recent-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .recent-metric-card { background: var(--bg); border-radius: 10px; padding: 12px; text-align: center; }
+    .recent-metric-card .r-val { font-size: 22px; font-weight: 800; }
+    .recent-metric-card .r-lbl { font-size: 11px; color: var(--text-sub); margin-top: 4px; }
+    .recent-note {
+      font-size: 13px;
+      color: var(--text-sub);
+      line-height: 1.7;
+      padding: 10px 14px;
+      background: #EFF6FF;
+      border-radius: 8px;
+      border-left: 3px solid var(--accent);
+    }
+    .update-date { font-size: 11px; color: var(--text-sub); margin-top: 8px; text-align: right; }
   </style>
 </head>
 <body>
@@ -437,6 +476,7 @@ const SCHEMES = [
       { asset: '大宗商品',    cat: 'commodity', weight: 7.5 },
     ],
     perf: { ret: 7.5, dd: -12.7, sharpe: 0.80, vol: 7.5 },
+    recent: { m1: 0.8, m3: 2.1, ytd: 1.5, note: '黄金近期强势对冲了长债承压，大宗商品温和贡献，组合在高利率延续环境下整体保持稳定防御态势，风险平价逻辑持续有效。' },
     rebalance: '每年一次',
     suitable: ['保守型投资者', '退休准备', '长期持有'],
     envs: ['通胀上升', '通缩环境', '经济增长', '经济衰退'],
@@ -460,6 +500,7 @@ const SCHEMES = [
       { asset: '现金',  cat: 'cash',      weight: 25 },
     ],
     perf: { ret: 6.5, dd: -11.0, sharpe: 0.75, vol: 6.8 },
+    recent: { m1: 0.6, m3: 1.8, ytd: 1.2, note: '黄金本月涨幅显著对冲了长债浮亏，现金端收益率维持高位，四类资产相互平衡，组合在地缘不确定性上升背景下防御性突出。' },
     rebalance: '每年一次（偏离5%时触发）',
     suitable: ['极度保守型', '避险需求', '财富保值'],
     envs: ['通胀', '通缩', '经济繁荣', '经济萧条'],
@@ -481,6 +522,7 @@ const SCHEMES = [
       { asset: '债券', cat: 'bond',   weight: 40 },
     ],
     perf: { ret: 8.5, dd: -27.0, sharpe: 0.65, vol: 11.5 },
+    recent: { m1: 1.2, m3: 3.5, ytd: 2.8, note: '美股持续走强带动股票端贡献可观收益，债券端受高利率环境小幅拖累，整体净值平稳向上，经典比例的有效性再次得到验证。' },
     rebalance: '每年或偏离5%时',
     suitable: ['稳健型投资者', '中长期配置', '退休账户'],
     envs: ['经济增长', '低通胀环境'],
@@ -506,6 +548,7 @@ const SCHEMES = [
       { asset: '通胀保护债',  cat: 'bond_tips',    weight: 15 },
     ],
     perf: { ret: 10.0, dd: -28.0, sharpe: 0.72, vol: 14.2 },
+    recent: { m1: 1.8, m3: 4.2, ytd: 3.5, note: 'REITs受商业地产复苏提振，美股及国际股票共同驱动组合走高，另类资产的流动性溢价效果持续显现，整体强于传统60/40。' },
     rebalance: '每年，严格执行',
     suitable: ['超长期投资者', '机构投资者', '高风险承受力'],
     envs: ['经济增长期', '通胀上升'],
@@ -528,6 +571,7 @@ const SCHEMES = [
       { asset: '债券',          cat: 'bond',         weight: 36 },
     ],
     perf: { ret: 8.0, dd: -33.0, sharpe: 0.60, vol: 12.0 },
+    recent: { m1: 1.5, m3: 3.8, ytd: 3.1, note: '美股强势为主要贡献来源，国际股票表现分化，债券端小幅拖累，三基金极简策略以低成本优势持续兑现全球市场长期增长红利。' },
     rebalance: '每年一次',
     suitable: ['懒人投资者', '长期定投', '费率敏感者'],
     envs: ['长期经济增长'],
@@ -549,6 +593,7 @@ const SCHEMES = [
       { asset: '债券', cat: 'bond',   weight: 50 },
     ],
     perf: { ret: 7.0, dd: -19.0, sharpe: 0.68, vol: 9.5 },
+    recent: { m1: 0.9, m3: 2.5, ytd: 2.0, note: '股债各半的均衡配置在当前震荡市中运行平稳，符合防御型策略初衷，当前市场估值处于合理区间，长期持有逻辑清晰。' },
     rebalance: '每年或市场大幅波动时',
     suitable: ['价值投资者', '保守稳健型', '长期持有'],
     envs: ['各种市场环境均适用'],
@@ -570,6 +615,7 @@ const SCHEMES = [
       { asset: '债券', cat: 'bond',   weight: 20 },
     ],
     perf: { ret: 9.8, dd: -40.0, sharpe: 0.58, vol: 16.0 },
+    recent: { m1: 1.9, m3: 5.1, ytd: 4.2, note: '高股票敞口充分享受美股强势，今年以来涨幅居经典策略前列，短期波动在意料之内，适合长期持有者坚守，不必因短期回调轻易减仓。' },
     rebalance: '每年一次',
     suitable: ['年轻投资者(<35岁)', '风险承受力强', '10年以上期限'],
     envs: ['长期牛市', '经济扩张期'],
@@ -591,6 +637,7 @@ const SCHEMES = [
       { asset: '债券', cat: 'bond',   weight: 80 },
     ],
     perf: { ret: 5.2, dd: -7.8, sharpe: 0.62, vol: 5.5 },
+    recent: { m1: 0.4, m3: 1.2, ytd: 0.8, note: '债券主导组合在高利率环境下票息收益稳定，净值波动极低，本金保护目标持续达成，适合风险厌恶型投资者安心持有。' },
     rebalance: '每年一次',
     suitable: ['退休人士', '极度保守型', '短期资金'],
     envs: ['降息周期', '经济衰退'],
@@ -615,6 +662,7 @@ const SCHEMES = [
       { asset: '黄金',          cat: 'gold',      weight: 20 },
     ],
     perf: { ret: 7.8, dd: -13.5, sharpe: 0.85, vol: 7.2 },
+    recent: { m1: 1.1, m3: 2.8, ytd: 2.3, note: '黄金与小盘价值股表现均不俗，五类资产分散效果显著，今年以来风险调整后收益（夏普比率）在同类低波动方案中位居前列。' },
     rebalance: '每年一次',
     suitable: ['保守型', '追求低波动', '财富积累期'],
     envs: ['各种经济环境'],
@@ -637,6 +685,7 @@ const SCHEMES = [
       { asset: '新兴市场',    cat: 'equity_em',   weight: 12 },
     ],
     perf: { ret: 9.0, dd: -45.0, sharpe: 0.55, vol: 17.5 },
+    recent: { m1: 2.0, m3: 5.5, ytd: 4.5, note: '美股强势主导拉动全球组合上行，新兴市场表现分化，欧日市场温和跟涨，全球市值加权策略随全球经济温和扩张而稳步上行。' },
     rebalance: '每年调整至市值权重',
     suitable: ['长期成长型', '追求全球分散', '年轻投资者'],
     envs: ['全球经济增长期'],
@@ -660,6 +709,7 @@ const SCHEMES = [
       { asset: '短期美国国债',   cat: 'bond_mid', weight: 10 },
     ],
     perf: { ret: 10.2, dd: -44.0, sharpe: 0.62, vol: 16.8 },
+    recent: { m1: 2.2, m3: 5.8, ytd: 4.8, note: '标普500今年以来延续强势，90%股票仓位充分受益，完全兑现巴菲特"相信美国经济长期增长"的核心逻辑，操作极简且长期有效。' },
     rebalance: '每年一次',
     suitable: ['长期投资者', '指数信仰者', '20年以上期限'],
     envs: ['长期经济增长', '美股持续牛市'],
@@ -683,6 +733,7 @@ const SCHEMES = [
       { asset: '现金及等价物',         cat: 'cash',        weight: 10 },
     ],
     perf: { ret: 19.8, dd: -50.7, sharpe: 0.78, vol: 22.5 },
+    recent: { m1: 1.8, m3: 4.5, ytd: 3.9, note: '苹果股价稳健回升，美国银行等金融股受益于高利率环境盈利扩张，可口可乐等消费品提供稳定股息，伯克希尔现金储备充裕，静待机会。' },
     rebalance: '机会性调整，不固定周期',
     suitable: ['价值投资者', '长期持有者', '能承受大幅波动'],
     envs: ['经济稳定增长', '企业盈利扩张期'],
@@ -706,6 +757,7 @@ const SCHEMES = [
       { asset: '现金/短债',                cat: 'cash',        weight: 10 },
     ],
     perf: { ret: 28.0, dd: -52.0, sharpe: 0.73, vol: 35.0 },
+    recent: { m1: 3.5, m3: 8.2, ytd: 7.1, note: '英伟达、微软继续领跑AI赛道，半导体板块整体强势，科技股集中组合今年以来涨幅大幅领先市场，但集中度风险不可忽视，高波动需做好心理准备。' },
     rebalance: '机会性调整',
     suitable: ['高风险偏好者', 'AI/科技赛道信仰者', '可承受极高波动'],
     envs: ['科技牛市', 'AI产业爆发期', '宽松货币政策'],
@@ -730,6 +782,7 @@ const SCHEMES = [
       { asset: '现金(机会储备)', cat: 'cash',        weight: 10 },
     ],
     perf: { ret: 14.5, dd: -38.0, sharpe: 0.68, vol: 20.0 },
+    recent: { m1: 1.5, m3: 4.0, ytd: 3.3, note: '消费与医疗板块在居民收入温和增长背景下表现稳定，"在生活中发现投资机会"的选股逻辑依然有效，组合今年以来表现符合预期。' },
     rebalance: '持续监控，季度调整',
     suitable: ['成长型投资者', '勤于研究者', '中长期持有'],
     envs: ['经济扩张期', '消费升级周期'],
@@ -753,6 +806,7 @@ const SCHEMES = [
       { asset: '现金(机会储备)',     cat: 'cash',        weight: 10 },
     ],
     perf: { ret: 15.5, dd: -55.0, sharpe: 0.58, vol: 26.0 },
+    recent: { m1: -1.2, m3: 0.8, ytd: -0.5, note: '中国互联网龙头股估值修复进程缓慢，中概股整体承压，组合今年以来小幅收负，但芒格式集中持有的长期价值逻辑未发生根本变化，需耐心等待价值回归。' },
     rebalance: '极少调整，以持有为主',
     suitable: ['深度研究型投资者', '价值投资信徒', '心理素质极强者'],
     envs: ['长期任何环境', '价值低估时加仓'],
@@ -777,6 +831,7 @@ const SCHEMES = [
       { asset: '现金/衍生品',   cat: 'cash',      weight: 8  },
     ],
     perf: { ret: 20.0, dd: -35.0, sharpe: 0.90, vol: 22.0 },
+    recent: { m1: 2.8, m3: 6.5, ytd: 5.2, note: '黄金创历史新高，大宗商品因地缘局势升温大幅拉升，宏观对冲策略捕捉到本轮趋势，全球股票多头跟涨，组合今年以来表现亮眼。' },
     rebalance: '动态调整，基于宏观研判',
     suitable: ['高级宏观投资者', '可承受极高波动', '有深度研究能力'],
     envs: ['宏观趋势明确时', '货币政策转折期', '地缘政治动荡期'],
@@ -801,6 +856,7 @@ const SCHEMES = [
       { asset: '全球债券',  cat: 'bond',        weight: 15 },
     ],
     perf: { ret: 18.5, dd: -22.0, sharpe: 1.45, vol: 12.5 },
+    recent: { m1: 1.6, m3: 4.2, ytd: 3.5, note: '量化多元策略在震荡市中自适应调整，多资产轮动机制有效运作，风险调整后收益继续保持在同类方案最优水平，低回撤特征突出。' },
     rebalance: '算法自动，持续动态调整',
     suitable: ['量化爱好者', '追求高风险调整收益', '相信数学规律者'],
     envs: ['任何市场环境（策略自适应）'],
@@ -826,6 +882,7 @@ const SCHEMES = [
       { asset: '现金/固收',            cat: 'cash',        weight: 15 },
     ],
     perf: { ret: 12.5, dd: -42.0, sharpe: 0.55, vol: 22.0 },
+    recent: { m1: -0.8, m3: 1.5, ytd: 0.3, note: '白酒板块短期承压，茅台等估值仍在消化高位；腾讯港股有所回升形成对冲，组合今年以来微幅收正，长期持有者心态稳健，等待消费复苏催化剂。' },
     rebalance: '极少调整，长期持有',
     suitable: ['长期主义者', '消费行业信仰者', '耐心持有10年以上'],
     envs: ['中国消费升级周期', '企业盈利稳健增长期'],
@@ -849,6 +906,7 @@ const SCHEMES = [
       { asset: '现金(大量备用)',                cat: 'cash',        weight: 10 },
     ],
     perf: { ret: 15.0, dd: -48.0, sharpe: 0.58, vol: 25.0 },
+    recent: { m1: -1.0, m3: 2.0, ytd: 0.8, note: '中医药龙头（片仔癀等）短期波动加大，白酒估值修复缓慢，但招商银行等金融股提供稳定股息支撑，组合整体维持小幅正收益，长期逻辑不变。' },
     rebalance: '机会性调整，持仓极为集中',
     suitable: ['消费/医药行业研究者', '高风险承受力', '长期持有信仰者'],
     envs: ['中国居民消费升级', '医疗健康需求扩张期'],
@@ -872,6 +930,7 @@ const SCHEMES = [
       { asset: '现金',                        cat: 'cash',        weight: 5  },
     ],
     perf: { ret: 18.0, dd: -38.0, sharpe: 0.72, vol: 24.0 },
+    recent: { m1: -0.5, m3: 1.8, ytd: 0.6, note: '白酒、互联网板块估值处于历史相对低位，资产净值缓慢修复，近3月已逐步企稳，当前位置长期配置性价比逐步显现，耐心是核心关键词。' },
     rebalance: '每季度审视，小幅调整',
     suitable: ['消费行业看好者', '中长期持有', 'A股/港股投资者'],
     envs: ['中国消费复苏期', '居民收入增长期'],
@@ -895,6 +954,7 @@ const SCHEMES = [
       { asset: '现金(安全垫)',        cat: 'cash',        weight: 5  },
     ],
     perf: { ret: 22.0, dd: -45.0, sharpe: 0.80, vol: 27.0 },
+    recent: { m1: 1.5, m3: 3.8, ytd: 3.0, note: '苹果股价本月表现强劲，腾讯、网易受港股市场企稳修复带动，组合整体呈现温和上行，段氏"做正确的事"持仓不动逻辑在波动中持续兑现。' },
     rebalance: '几乎不调整，逢低加仓',
     suitable: ['深度研究型投资者', '中美互联网看好者', '超长期持有'],
     envs: ['中美科技产业增长期', '平台经济扩张期'],
@@ -921,6 +981,7 @@ const SCHEMES = [
       { asset: '现金',         cat: 'cash',       weight: 5  },
     ],
     perf: { ret: 11.5, dd: -25.0, sharpe: 0.88, vol: 10.5 },
+    recent: { m1: 0.5, m3: 1.5, ytd: 1.0, note: '高收益债信用利差温和收窄，不良资产回收率持续改善，组合在严格控制下行风险的前提下实现稳定正收益，防御与进攻兼备。' },
     rebalance: '机会性调整，危机时加大买入',
     suitable: ['固收偏好者', '逆向投资者', '风险厌恶型机构'],
     envs: ['信用危机后修复期', '利率下行周期', '市场极度恐慌时'],
@@ -945,6 +1006,7 @@ const SCHEMES = [
       { asset: '非上市房地产',  cat: 'reit',        weight: 3  },
     ],
     perf: { ret: 6.8, dd: -23.3, sharpe: 0.52, vol: 10.8 },
+    recent: { m1: 1.3, m3: 3.2, ytd: 2.6, note: '全球股票多元分散带来稳定收益，ESG责任投资筛选标准未影响整体回报表现，超长期主权财富基金逻辑经受验证，为后代管理财富的使命持续兑现。' },
     rebalance: '每年按目标权重再平衡',
     suitable: ['超长期机构投资者', '追求全球分散', '低风险偏好的稳健配置'],
     envs: ['全球经济长期增长', '多种市场环境均适用'],
@@ -968,6 +1030,7 @@ const SCHEMES = [
       { asset: '现金/短债',        cat: 'cash',      weight: 15 },
     ],
     perf: { ret: 9.5, dd: -65.0, sharpe: 0.35, vol: 28.0 },
+    recent: { m1: 2.5, m3: 7.2, ytd: 5.8, note: '黄金今年以来强势突破历史新高，黄金矿业股放大涨幅提供双倍收益，组合表现本期亮眼；但历史最大回撤高达65%，高波动属性持有者须提前做好心理准备。' },
     rebalance: '机会性调整',
     suitable: ['黄金信仰者', '通胀担忧者', '可承受极高波动'],
     envs: ['通胀高企', '货币宽松周期', '金融系统风险上升时'],
@@ -989,6 +1052,12 @@ const SCHEME_CAT = {
   'marks': 'intl', 'norway': 'intl', 'paulson': 'intl',
   'danbin': 'cn', 'linyuan': 'cn', 'zhangkun': 'cn', 'duanyongping': 'cn',
 };
+
+// ──────────────────────────────────────────────
+// HELPERS
+// ──────────────────────────────────────────────
+function fmtPct(v) { return (v > 0 ? '+' : '') + v + '%'; }
+function signCls(v) { return v > 0 ? 'val-pos' : v < 0 ? 'val-neg' : 'val-neu'; }
 
 // ──────────────────────────────────────────────
 // STATE
@@ -1058,6 +1127,23 @@ function renderGrid() {
         <div class="metric"><div class="metric-val pos">${s.perf.ret}%</div><div class="metric-lbl">年化收益</div></div>
         <div class="metric"><div class="metric-val neg">${s.perf.dd}%</div><div class="metric-lbl">最大回撤</div></div>
         <div class="metric"><div class="metric-val neu">${s.perf.sharpe}</div><div class="metric-lbl">夏普比率</div></div>
+      </div>
+      <div class="card-recent">
+        <span class="recent-lbl">近期</span>
+        <div class="recent-item">
+          <span class="recent-val ${signCls(s.recent.m1)}">${fmtPct(s.recent.m1)}</span>
+          <span class="recent-period">本月</span>
+        </div>
+        <div class="recent-divider"></div>
+        <div class="recent-item">
+          <span class="recent-val ${signCls(s.recent.m3)}">${fmtPct(s.recent.m3)}</span>
+          <span class="recent-period">近3月</span>
+        </div>
+        <div class="recent-divider"></div>
+        <div class="recent-item">
+          <span class="recent-val ${signCls(s.recent.ytd)}">${fmtPct(s.recent.ytd)}</span>
+          <span class="recent-period">今年以来</span>
+        </div>
       </div>
       <div class="card-footer" onclick="event.stopPropagation()">
         <button class="btn btn-primary" onclick="openModal('${s.id}')">查看详情</button>
@@ -1177,6 +1263,26 @@ function openModal(id) {
         <div class="val" style="color:#8B5CF6">${s.perf.vol}%</div>
         <div class="lbl">年化波动率</div>
       </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="section-title">近期运行情况</div>
+      <div class="modal-recent-grid">
+        <div class="recent-metric-card">
+          <div class="r-val ${signCls(s.recent.m1)}">${fmtPct(s.recent.m1)}</div>
+          <div class="r-lbl">本月收益</div>
+        </div>
+        <div class="recent-metric-card">
+          <div class="r-val ${signCls(s.recent.m3)}">${fmtPct(s.recent.m3)}</div>
+          <div class="r-lbl">近3月收益</div>
+        </div>
+        <div class="recent-metric-card">
+          <div class="r-val ${signCls(s.recent.ytd)}">${fmtPct(s.recent.ytd)}</div>
+          <div class="r-lbl">今年以来</div>
+        </div>
+      </div>
+      <div class="recent-note">${s.recent.note}</div>
+      <div class="update-date">📅 数据截至 2026年3月</div>
     </div>
 
     <div class="modal-section">
